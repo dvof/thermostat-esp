@@ -5,8 +5,6 @@
 #define CLK     D5
 #define RCK     D8
 
-#define PULSE_US (1000)
-
 const uint8_t digitCodes[10] = {
     0b11101011,
     0b00101000,
@@ -20,25 +18,19 @@ const uint8_t digitCodes[10] = {
     0b11111010
 };
 
-
-
-
 static void write(byte b)
 {
     for (int i = 0; i < 8; i++)
     {
         digitalWrite(MOSI, b & 1);
         b >>= 1;
-        delayMicroseconds(PULSE_US);
         digitalWrite(CLK, LOW);
-        delayMicroseconds(PULSE_US);
         digitalWrite(CLK, HIGH);
     }
 }
 
 static void update()
 {
-    delayMicroseconds(PULSE_US);
     digitalWrite(RCK, LOW);
     digitalWrite(RCK, HIGH);
 }
