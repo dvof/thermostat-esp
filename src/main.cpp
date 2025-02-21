@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include "WemosD1MiniPins.h"
+#include <SPI.h>
 
 #define MOSI    D7
-#define CLK     D5
+#define SCK     D5
 #define RCK     D8
 
 const uint8_t digitCodes[10] = {
@@ -17,17 +18,6 @@ const uint8_t digitCodes[10] = {
     0b11111011,
     0b11111010
 };
-
-static void write(byte b)
-{
-    for (int i = 0; i < 8; i++)
-    {
-        digitalWrite(MOSI, b & 1);
-        b >>= 1;
-        digitalWrite(CLK, LOW);
-        digitalWrite(CLK, HIGH);
-    }
-}
 
 static void update()
 {
@@ -44,12 +34,14 @@ void setup()
     }
     Serial.println("Setup device");
 
-    pinMode(MOSI, OUTPUT);
-    pinMode(CLK, OUTPUT);
     pinMode(RCK, OUTPUT);
-    digitalWrite(MOSI, LOW);
-    digitalWrite(CLK, HIGH);
-    write(digitCodes[2]);
+
+    SPI.begin();
+    SPI.setFrequency(1000000);
+    SPI.setDataMode(SPI_MODE0);
+    SPI.setBitOrder(LSBFIRST);
+
+    SPI.transfer(digitCodes[2]);
     update();
 }
 
@@ -57,7 +49,7 @@ void loop()
 {
     for (int i=0; i < 10; i++)
     {
-        write(digitCodes[i]);
+        SPI.transfer(digitCodes[i]);
         update();
         delay(2000);
     }
