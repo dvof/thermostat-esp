@@ -1,7 +1,6 @@
 #include "sevenSegment.h"
 #include "wemosD1MiniPins.h"
 #include <SPI.h>
-#include <Scheduler.h>
 
 #define MOSI D7
 #define SCK D5
@@ -49,6 +48,10 @@ void SevenSegment::initialize()
     SPI.setFrequency(1000000);
     SPI.setDataMode(SPI_MODE0);
     SPI.setBitOrder(LSBFIRST);
+
+    this->_scheduler.init();
+    this->_scheduler.addTask(_displayNumberTask);
+    this->_scheduler.addTask(_displayTextTask);
 }
 
 void SevenSegment::spiUpdate()
@@ -62,24 +65,46 @@ void SevenSegment::identifyLed()
     for (int i = 0; i < 8; i++)
     {
         SPI.transfer(1 << i);
-        update();
+        spiUpdate();
         delay(2000);
     }
 }
 
-void SevenSegment::identifyDisplay();
+void SevenSegment::identifyDisplay()
 {
     for (int i = 0; i < 8; ++i)
     {
         SPI.transfer(digitCodes[8]);
         SPI.transfer(1 << i);
-        update();
+        spiUpdate();
         delay(2000);
     }
 }
 
-void displayNumber(uint16_t number, bool colon = false) {}
-void displayText(char* text, SevenSegmentCase case = SevenSegmentCase::DONT_CARE) {}
+void SevenSegment::displayNumberCallback() {}
+void SevenSegment::displayTextCallback() {}
+bool SevenSegment::displayNumber(float number, bool colon)
+{
+    this->_displayNumber     = number;
+    this->_displayNumberFlag = true;
+    this->_displayColonFlag  = colon;
+    this->_displayTextTask.disable();
+    this->_displayNumberTask.enable();
+    return true;
+}
+bool SevenSegment::displayText(char* text, SevenSegmentCase segmentCase)
+{
+    if (text == NULL)
+    {
+        return false;
+    }
+    //this->_displayText       = number;
+    //this->_displayNumberFlag = true;
+    //this->_displayColonFlag  = colon;
+    //this->_displayTextTask.disable();
+    //this->_displayNumberTask.enable();
+    return true;
+}
 
 // static int button_increment = 0;
 // int buttonLeft              = digitalRead(D4);
@@ -114,7 +139,7 @@ void displayText(char* text, SevenSegmentCase case = SevenSegmentCase::DONT_CARE
 //     }
 //     SPI.transfer(digitCodes[button_increment % 10]);
 //     SPI.transfer(digit);
-//     update();
+//     spiUpdate();
 //     delay(40);
 // }
 //
@@ -127,22 +152,22 @@ void displayText(char* text, SevenSegmentCase case = SevenSegmentCase::DONT_CARE
 //          // digit 1
 //          SPI.transfer(digitCodes[(i / 1000) % 10]);
 //          SPI.transfer(DIG_1 | COLON);
-//          update();
+//          spiUpdate();
 //          delay(1);
 //          // digit 2
 //          SPI.transfer(digitCodes[(i / 100) % 10]);
 //          SPI.transfer(DIG_2 | COLON);
-//          update();
+//          spiUpdate();
 //          delay(1);
 //          // digit 3
 //          SPI.transfer(digitCodes[(i / 10) % 10]);
 //          SPI.transfer(DIG_3 | COLON);
-//          update();
+//          spiUpdate();
 //          delay(1);
 //          // digit 4
 //          SPI.transfer(digitCodes[i % 10]);
 //          SPI.transfer(DIG_4 | COLON);
-//          update();
+//          spiUpdate();
 //          delay(1);
 //      }
 //  }
