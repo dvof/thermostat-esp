@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#include "sevenSegment.h"
+//#include "sevenSegment.h"
 
-SevenSegment sevenSegment;
+//SevenSegment sevenSegment;
 
 void setup()
 {
@@ -15,7 +15,7 @@ void setup()
     pinMode(D3, INPUT_PULLUP);
     pinMode(D4, INPUT_PULLUP);
 
-    sevenSegment.initialize();   
+//    sevenSegment.initialize();   
 }
 
 void loop() {

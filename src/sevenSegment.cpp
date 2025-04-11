@@ -41,6 +41,24 @@ const uint8_t digitCodes[10] = {
     (SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G)          // 9
 };
 
+void SevenSegment::_staticDisplayNumberCallback()
+{
+    if (_instance)
+    {
+        _instance->_displayNumberCallback();
+    }
+}
+void SevenSegment::_staticDisplayTextCallback()
+{
+    if (_instance)
+    {
+        _instance->_displayTextCallback();
+    }
+}
+
+void SevenSegment::_displayNumberCallback() {}
+void SevenSegment::_displayTextCallback() {}
+
 void SevenSegment::initialize()
 {
     pinMode(RCK, OUTPUT);
@@ -49,12 +67,15 @@ void SevenSegment::initialize()
     SPI.setDataMode(SPI_MODE0);
     SPI.setBitOrder(LSBFIRST);
 
+    _displayNumberTask.set(TASK_IMMEDIATE, TASK_FOREVER, _staticDisplayNumberCallback);
+    _displayTextTask.set(TASK_IMMEDIATE, TASK_FOREVER, _staticDisplayTextCallback);
+
     this->_scheduler.init();
     this->_scheduler.addTask(_displayNumberTask);
     this->_scheduler.addTask(_displayTextTask);
 }
 
-void SevenSegment::spiUpdate()
+void SevenSegment::_spiUpdate()
 {
     digitalWrite(RCK, LOW);
     digitalWrite(RCK, HIGH);
@@ -65,7 +86,7 @@ void SevenSegment::identifyLed()
     for (int i = 0; i < 8; i++)
     {
         SPI.transfer(1 << i);
-        spiUpdate();
+        this->_spiUpdate();
         delay(2000);
     }
 }
@@ -76,13 +97,11 @@ void SevenSegment::identifyDisplay()
     {
         SPI.transfer(digitCodes[8]);
         SPI.transfer(1 << i);
-        spiUpdate();
+        this->_spiUpdate();
         delay(2000);
     }
 }
 
-void SevenSegment::displayNumberCallback() {}
-void SevenSegment::displayTextCallback() {}
 bool SevenSegment::displayNumber(float number, bool colon)
 {
     this->_displayNumber     = number;
@@ -98,11 +117,11 @@ bool SevenSegment::displayText(char* text, SevenSegmentCase segmentCase)
     {
         return false;
     }
-    //this->_displayText       = number;
-    //this->_displayNumberFlag = true;
-    //this->_displayColonFlag  = colon;
-    //this->_displayTextTask.disable();
-    //this->_displayNumberTask.enable();
+    // this->_displayText       = number;
+    // this->_displayNumberFlag = true;
+    // this->_displayColonFlag  = colon;
+    // this->_displayTextTask.disable();
+    // this->_displayNumberTask.enable();
     return true;
 }
 
