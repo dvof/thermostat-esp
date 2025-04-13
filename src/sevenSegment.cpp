@@ -22,13 +22,18 @@
 #define SEG_G (uint8_t)(1 << 4)
 #define SEG_DP (uint8_t)(1 << 2)
 
-#define DIG_1 (uint8_t)(1 << 2)
-#define DIG_2 (uint8_t)(1 << 5)
-#define DIG_3 (uint8_t)(1 << 3)
-#define DIG_4 (uint8_t)(1 << 6)
-#define COLON (uint8_t)(1 << 1)
+enum struct DigitSelect : uint8_t
+{
+    DIGIT1 = (1 << 2),
+    DIGIT2 = (1 << 5),
+    DIGIT3 = (1 << 3),
+    DIGIT4 = (1 << 6),
+    COLON  = (1 << 1),
+};
 
-const uint8_t digitCodes[10] = {
+typedef uint8_t DigitCode;
+
+const DigitCode digitCodes[10] = {
     (SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F),         // 0
     (SEG_B | SEG_C),                                         // 1
     (SEG_A | SEG_B | SEG_G | SEG_E | SEG_D),                 // 2
@@ -41,12 +46,50 @@ const uint8_t digitCodes[10] = {
     (SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G)          // 9
 };
 
+static volatile DigitCode displayData[4] = {0};
+static volatile bool colonFlag           = false;
+static volatile int commaFlag            = -1;
+static volatile DigitSelect g_digit      = DigitSelect::DIGIT1;
+DigitSelect nextDigitSelect(DigitSelect digit);
+
+void IRAM_ATTR onTimerISR()
+{
+
+    // This runs every 1 ms
+    // Do your stuff here (keep it short!)
+    SPI.transfer(digitCodes[(i / 1000) % 10]);
+    SPI.transfer(g_digit);
+    spiUpdate();
+    g_digit = nextDigitSelect(g_digit);
+}
+
+static DigitSelect nextDigitSelect(DigitSelect digit)
+{
+    switch (digit)
+    {
+    case DigitSelect::DIGIT1:
+        return DigitSelect::DIGIT2;
+    case DigitSelect::DIGIT2:
+        return DigitSelect::DIGIT3;
+    case DigitSelect::DIGIT3:
+        return DigitSelect::DIGIT4;
+    case DigitSelect::DIGIT4:
+        return DigitSelect::DIGIT1;
+    default:
+        return DigitSelect::DIGIT1;
+    }
+}
+
 SevenSegment::SevenSegment()
 {
     pinMode(RCK, OUTPUT);
     SPI.begin();
     SPI.setFrequency(1000000);
     SPI.setDataMode(SPI_MODE0);
+
+    timer1_attachInterrupt(onTimerISR);           // Attach ISR
+    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP); // Loop every time
+    timer1_write(5000);
     SPI.setBitOrder(LSBFIRST);
 }
 
@@ -82,10 +125,10 @@ void SevenSegment::identifyDisplay()
 bool SevenSegment::displayNumber(float number)
 {
     this->_displayData[0] = (uint8_t)number / 10 % 10;
-    this->_displayData[1] = (uint8_t)number %  10;
+    this->_displayData[1] = (uint8_t)number % 10;
     this->_displayData[2] = (uint8_t)(number * 10) / 10 % 10;
-    this->_commaFlag = 2;
-    this->_colonFlag = false;
+    this->_commaFlag      = 2;
+    this->_colonFlag      = false;
     return true;
 }
 
