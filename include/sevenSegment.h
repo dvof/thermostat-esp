@@ -1,8 +1,7 @@
 #ifndef SEVEN_SEGMENT_H
 #define SEVEN_SEGMENT_H
 
-#include <Arduino.h>
-#include <TaskScheduler.h>
+ #include <Arduino.h>
 
 #define SEVEN_SEGMENT_TEXT_LENGTH 5
 
@@ -16,29 +15,18 @@ enum class SevenSegmentCase
 class SevenSegment
 {
 private:
-    // Needed for task scheduler
-    static SevenSegment* _instance; 
-    static void _staticDisplayNumberCallback(); 
-    static void _staticDisplayTextCallback();  
-    void _displayNumberCallback();
-    void _displayTextCallback();
-
-    float _displayNumber                         = 0.0;
-    char _displayText[SEVEN_SEGMENT_TEXT_LENGTH] = "  hi";
-    bool _displayNumberFlag                      = false;
-    bool _displayTextFlag                        = false;
-    bool _displayColonFlag                       = false;
-    Scheduler _scheduler;
-
-    Task _displayNumberTask;
-    Task _displayTextTask;
+    uint8_t _displayData[4] = {0};
+    bool _colonFlag = false;
+    int _commaFlag         = -1;
     void _spiUpdate();
 
 public:
+    SevenSegment();
     void initialize();
     void identifyLed();
     void identifyDisplay();
-    bool displayNumber(float number, bool colon = false);
+    bool displayNumber(float number);
     bool displayText(char* text, SevenSegmentCase segmentCase = SevenSegmentCase::DONT_CARE);
+    void update();
 };
 #endif /* SEVEN_SEGMENT_H */

@@ -41,39 +41,16 @@ const uint8_t digitCodes[10] = {
     (SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G)          // 9
 };
 
-void SevenSegment::_staticDisplayNumberCallback()
-{
-    if (_instance)
-    {
-        _instance->_displayNumberCallback();
-    }
-}
-void SevenSegment::_staticDisplayTextCallback()
-{
-    if (_instance)
-    {
-        _instance->_displayTextCallback();
-    }
-}
-
-void SevenSegment::_displayNumberCallback() {}
-void SevenSegment::_displayTextCallback() {}
-
-void SevenSegment::initialize()
+SevenSegment::SevenSegment()
 {
     pinMode(RCK, OUTPUT);
     SPI.begin();
     SPI.setFrequency(1000000);
     SPI.setDataMode(SPI_MODE0);
     SPI.setBitOrder(LSBFIRST);
-
-    _displayNumberTask.set(TASK_IMMEDIATE, TASK_FOREVER, _staticDisplayNumberCallback);
-    _displayTextTask.set(TASK_IMMEDIATE, TASK_FOREVER, _staticDisplayTextCallback);
-
-    this->_scheduler.init();
-    this->_scheduler.addTask(_displayNumberTask);
-    this->_scheduler.addTask(_displayTextTask);
 }
+
+void SevenSegment::update() {}
 
 void SevenSegment::_spiUpdate()
 {
@@ -102,15 +79,16 @@ void SevenSegment::identifyDisplay()
     }
 }
 
-bool SevenSegment::displayNumber(float number, bool colon)
+bool SevenSegment::displayNumber(float number)
 {
-    this->_displayNumber     = number;
-    this->_displayNumberFlag = true;
-    this->_displayColonFlag  = colon;
-    this->_displayTextTask.disable();
-    this->_displayNumberTask.enable();
+    this->_displayData[0] = (uint8_t)number / 10 % 10;
+    this->_displayData[1] = (uint8_t)number %  10;
+    this->_displayData[2] = (uint8_t)(number * 10) / 10 % 10;
+    this->_commaFlag = 2;
+    this->_colonFlag = false;
     return true;
 }
+
 bool SevenSegment::displayText(char* text, SevenSegmentCase segmentCase)
 {
     if (text == NULL)
