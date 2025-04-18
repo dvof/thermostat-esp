@@ -33,7 +33,7 @@ enum struct DigitSelect : uint8_t
 
 typedef uint8_t DigitCode;
 
-const DigitCode digitCodes[10] = {
+static const DigitCode _digitCodes[10] = {
     (SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F),         // 0
     (SEG_B | SEG_C),                                         // 1
     (SEG_A | SEG_B | SEG_G | SEG_E | SEG_D),                 // 2
@@ -46,38 +46,42 @@ const DigitCode digitCodes[10] = {
     (SEG_A | SEG_B | SEG_C | SEG_D | SEG_F | SEG_G)          // 9
 };
 
-static volatile DigitCode displayData[4] = {0};
-static volatile bool colonFlag           = false;
-static volatile int commaFlag            = -1;
-static volatile DigitSelect g_digit      = DigitSelect::DIGIT1;
-DigitSelect nextDigitSelect(DigitSelect digit);
+static const DigitCode _digitCodeLowerC = (SEG_G | SEG_E | SEG_D);
+static const DigitCode _digitCodeUpperC = (SEG_A | SEG_F | SEG_D | SEG_E);
+static const DigitCode _digitCodeUpperE = (SEG_A | SEG_F | SEG_G | SEG_E | SEG_D);
+static const DigitCode _digitCodeLowerR = (SEG_E | SEG_G);
+static const DigitCode _digitCodeOff    = 0;
+
+struct Digit
+{
+    const DigitSelect select;
+    DigitCode code;
+};
+
+static volatile Digit _digits[4] = {
+    {DigitSelect::DIGIT1, _digitCodes[1]},
+    {DigitSelect::DIGIT2, _digitCodes[2]},
+    {DigitSelect::DIGIT3, _digitCodes[3]},
+    {DigitSelect::DIGIT4, _digitCodes[5]},
+};
+static volatile uint8_t _digitIndex = 0;
+
+static void spiUpdate()
+{
+    digitalWrite(RCK, LOW);
+    digitalWrite(RCK, HIGH);
+}
 
 void IRAM_ATTR onTimerISR()
 {
-
-    // This runs every 1 ms
-    // Do your stuff here (keep it short!)
-    SPI.transfer(digitCodes[(i / 1000) % 10]);
-    SPI.transfer(g_digit);
-    spiUpdate();
-    g_digit = nextDigitSelect(g_digit);
-}
-
-static DigitSelect nextDigitSelect(DigitSelect digit)
-{
-    switch (digit)
+    if (_digitIndex == 4)
     {
-    case DigitSelect::DIGIT1:
-        return DigitSelect::DIGIT2;
-    case DigitSelect::DIGIT2:
-        return DigitSelect::DIGIT3;
-    case DigitSelect::DIGIT3:
-        return DigitSelect::DIGIT4;
-    case DigitSelect::DIGIT4:
-        return DigitSelect::DIGIT1;
-    default:
-        return DigitSelect::DIGIT1;
+        _digitIndex = 0;
     }
+    SPI.transfer((uint8_t)_digits[_digitIndex].code);
+    SPI.transfer((uint8_t)_digits[_digitIndex].select);
+    spiUpdate();
+    _digitIndex++;
 }
 
 SevenSegment::SevenSegment()
@@ -86,28 +90,19 @@ SevenSegment::SevenSegment()
     SPI.begin();
     SPI.setFrequency(1000000);
     SPI.setDataMode(SPI_MODE0);
-
+    SPI.setBitOrder(LSBFIRST);
     timer1_attachInterrupt(onTimerISR);           // Attach ISR
     timer1_enable(TIM_DIV16, TIM_EDGE, TIM_LOOP); // Loop every time
     timer1_write(5000);
-    SPI.setBitOrder(LSBFIRST);
-}
-
-void SevenSegment::update() {}
-
-void SevenSegment::_spiUpdate()
-{
-    digitalWrite(RCK, LOW);
-    digitalWrite(RCK, HIGH);
 }
 
 void SevenSegment::identifyLed()
 {
     for (int i = 0; i < 8; i++)
     {
-        SPI.transfer(1 << i);
-        this->_spiUpdate();
-        delay(2000);
+        //        SPI.transfer(1 << i);
+        //        this->_spiUpdate();
+        //        delay(2000);
     }
 }
 
@@ -115,24 +110,53 @@ void SevenSegment::identifyDisplay()
 {
     for (int i = 0; i < 8; ++i)
     {
-        SPI.transfer(digitCodes[8]);
-        SPI.transfer(1 << i);
-        this->_spiUpdate();
-        delay(2000);
+        //        SPI.transfer(digitCodes[8]);
+        //        SPI.transfer(1 << i);
+        //        this->_spiUpdate();
+        //        delay(2000);
     }
 }
 
-bool SevenSegment::displayNumber(float number)
+void SevenSegment::displayError(SevenSegmentError error)
 {
-    this->_displayData[0] = (uint8_t)number / 10 % 10;
-    this->_displayData[1] = (uint8_t)number % 10;
-    this->_displayData[2] = (uint8_t)(number * 10) / 10 % 10;
-    this->_commaFlag      = 2;
-    this->_colonFlag      = false;
+    this->_error = error;
+
+    _digits[0].code = _digitCodeUpperE;
+    _digits[1].code = _digitCodeLowerR;
+    _digits[2].code = _digitCodeLowerR;
+    if (error == SevenSegmentError::GENERIC)
+    {
+        _digits[3].code = _digitCodeOff;
+    }
+    else
+    {
+        _digits[3].code = _digitCodes[(int)error];
+    }
+}
+
+bool SevenSegment::displayTemp(float temp)
+{
+    if (this->_error != SevenSegmentError::OK)
+    {
+        return false;
+    }
+
+    uint8_t firstDigit = _digitCodes[int(temp / 10) % 10];
+    if (firstDigit == _digitCodes[0])
+    {
+        _digits[0].code = _digitCodeOff;
+    }
+    else
+    {
+        _digits[0].code = firstDigit;
+    }
+    _digits[1].code = _digitCodes[int(temp) % 10] | SEG_DP;
+    _digits[2].code = _digitCodes[int(temp * 10) % 10];
+    _digits[3].code = _digitCodeUpperC;
     return true;
 }
 
-bool SevenSegment::displayText(char* text, SevenSegmentCase segmentCase)
+bool SevenSegment::displayText(char* text)
 {
     if (text == NULL)
     {

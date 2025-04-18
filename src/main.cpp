@@ -1,13 +1,7 @@
 #include <Arduino.h>
-#include <TaskScheduler.h>
 #include "sevenSegment.h"
 
 SevenSegment sevenSegment;
-Scheduler scheduler;
-
-void displayCallbackTask() { sevenSegment.update(); }
-
-Task displayTask(TASK_IMMEDIATE, TASK_FOREVER, &displayCallbackTask, &scheduler, true);
 
 void setup()
 {
@@ -20,6 +14,21 @@ void setup()
 
     pinMode(D3, INPUT_PULLUP);
     pinMode(D4, INPUT_PULLUP);
+
+    //    sevenSegment.initialize();
+    //    sevenSegment.start();
 }
 
-void loop() {}
+static float test = 5.4;
+
+void loop()
+{
+
+    test += 0.1;
+    sevenSegment.displayTemp(test);
+    delay(100);
+    if (test > 10)
+    {
+        sevenSegment.displayError(SevenSegmentError::GENERIC);
+    }
+}
