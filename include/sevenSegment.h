@@ -9,6 +9,7 @@ enum struct SevenSegmentError
 {
     OK      = -1,
     GENERIC = 0,
+    NO_TEMP_HUM = 1,
 };
 
 class SevenSegment
@@ -25,6 +26,8 @@ public:
     void identifyLed();
     void identifyDisplay();
     bool displayTemp(float temp);
+    bool displayHum(float hum);
+    bool displayOff(void);
     bool displayText(char* text);
     void displayError(SevenSegmentError error);
 };

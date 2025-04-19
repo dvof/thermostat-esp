@@ -50,6 +50,7 @@ static const DigitCode _digitCodeLowerC = (SEG_G | SEG_E | SEG_D);
 static const DigitCode _digitCodeUpperC = (SEG_A | SEG_F | SEG_D | SEG_E);
 static const DigitCode _digitCodeUpperE = (SEG_A | SEG_F | SEG_G | SEG_E | SEG_D);
 static const DigitCode _digitCodeLowerR = (SEG_E | SEG_G);
+static const DigitCode _digitCodeUpperH = (SEG_F | SEG_B | SEG_E | SEG_G | SEG_C);
 static const DigitCode _digitCodeOff    = 0;
 
 struct Digit
@@ -156,17 +157,48 @@ bool SevenSegment::displayTemp(float temp)
     return true;
 }
 
+bool SevenSegment::displayHum(float hum)
+{
+    if (this->_error != SevenSegmentError::OK)
+    {
+        return false;
+    }
+
+    _digits[0].code    = _digitCodeUpperH;
+    uint8_t firstDigit = _digitCodes[int(hum / 10) % 10];
+    if (firstDigit == _digitCodes[0])
+    {
+        _digits[1].code = _digitCodeOff;
+    }
+    else
+    {
+        _digits[1].code = firstDigit;
+    }
+    _digits[2].code = _digitCodes[int(hum) % 10] | SEG_DP;
+    _digits[3].code = _digitCodes[int(hum * 10) % 10];
+    return true;
+}
+
+bool SevenSegment::displayOff()
+{
+    if (this->_error != SevenSegmentError::OK)
+    {
+        return false;
+    }
+
+    _digits[0].code = _digitCodeOff;
+    _digits[1].code = _digitCodeOff;
+    _digits[2].code = _digitCodeOff;
+    _digits[3].code = _digitCodeOff;
+    return true;
+}
+
 bool SevenSegment::displayText(char* text)
 {
     if (text == NULL)
     {
         return false;
     }
-    // this->_displayText       = number;
-    // this->_displayNumberFlag = true;
-    // this->_displayColonFlag  = colon;
-    // this->_displayTextTask.disable();
-    // this->_displayNumberTask.enable();
     return true;
 }
 
